@@ -4,7 +4,7 @@
 LiquidCrystal_I2C lcd(0x27,16,2);
 
 // Threshold values for flow rate, pressure, and tank level
-const double threshold_flow_rate = 50.0;
+const double threshold_flow_rate = 100.0;
 const double threshold_pressure = 50.0;
 const double threshold_tank_level = 2900.0;
 
@@ -15,6 +15,13 @@ const double max_tank_3 = 3000.0;
 
 // Distance between depots in km
 const double distance = 700;
+// Set initial values for tank levels
+double tank1_level = 1200.0;
+double tank2_level = 2500.0;
+double tank3_level = 2000.0;
+
+double time_taken;
+int current_tank;
 
 void setup() {
   // put your setup code here, to run once:
@@ -61,14 +68,16 @@ double read_tank_level(int tank_number) {
 
 // Function to control flow into a specific tank
 void flow_into_tank(int tank_number) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
     if (tank_number == 1) {
-        Serial.println("Flowing into tank 1");
+        lcd.print("Flowing into tank 1");
     }
     else if (tank_number == 2) {
-        Serial.println("Flowing into tank 2");
+        lcd.print("Flowing into tank 2");
     }
     else if (tank_number == 3) {
-        Serial.println("Flowing into tank 3");
+        lcd.print("Flowing into tank 3");
     }
 }
 
@@ -86,8 +95,8 @@ void changeover_receipt(int tank_number) {
 }
 
 // Function to calculate time to fill up a tank
-double time_to_fill_up(double flow_rate, double ullage) {
-    return ullage / flow_rate;
+double time_to_fill_up(double flow_rate, int tank_level) {
+    return (threshold_tank_level-tank_level) / flow_rate;
 }
 
 // Function to estimate time of arrival of a product
@@ -95,6 +104,25 @@ double estimate_time_of_arrival(double flow_rate, double interface_distance) {
     double speed = flow_rate / (distance - interface_distance); // calculate speed in m^3/km-hour
     double hours = distance / speed; // calculate time in hours
     return hours;
+}
+
+void simulate_flow(int current_tank_, double tank_level_){
+    flow_into_tank(current_tank_);
+    delay(1000);
+    while (tank_level_ <threshold_tank_level) {
+      time_taken=time_to_fill_up(threshold_flow_rate, tank_level_);
+      display_on_LCD(threshold_flow_rate, 0, tank_level_, time_taken, 0);
+      if (current_tank_==1) {
+        tank1_level+=threshold_flow_rate;
+      }
+      else if (current_tank_==2) {
+        tank2_level+=threshold_flow_rate;
+      }
+      else {
+        tank2_level+=threshold_flow_rate;
+      }
+     
+    }
 }
 // Function to display data on the LCD screen
 void display_on_LCD(double flow_rate, double pressure, double tank_level, double time_to_fill, double arrival_time) {
@@ -109,6 +137,7 @@ void display_on_LCD(double flow_rate, double pressure, double tank_level, double
 
     lcd.clear();
     lcd.setCursor(0, 0); 
+    Serial.print(current_tank);
     lcd.print("Tank Level: ");
     lcd.print(tank_level);
     lcd.setCursor(0, 1);  
@@ -118,17 +147,61 @@ void display_on_LCD(double flow_rate, double pressure, double tank_level, double
     delay(2000);
 }
 
+//void simulate
+
 void loop() 
 {
   // put your main code here, to run repeatedly:
-  // int current_tank = 1;
+
   // double ullage;
   // double interface_distance;
-  // // Set initial values for tank levels
-  // double tank1_level = 2000.0;
-  // double tank2_level = 2500.0;
-  // double tank3_level = 1200.0;
-  display_on_LCD(23,34,7800,6700,7899);
+
+
+  if (tank1_level<tank2_level) {
+    current_tank=1;
+  }
+  else if (tank2_level<tank3_level) {
+  current_tank=2;
+  }
+  else if (tank3_level< tank2_level) {
+  current_tank=3;
+  }
+
+  if (current_tank==1) {
+    flow_into_tank(current_tank);
+    delay(1000);
+    while (tank1_level <threshold_tank_level) {
+      time_taken=time_to_fill_up(threshold_flow_rate, tank1_level);
+      display_on_LCD(threshold_flow_rate, 0, tank1_level, time_taken, 0);
+      tank1_level+=threshold_flow_rate;
+    }
+  }
+  else if (current_tank==2) {
+    flow_into_tank(current_tank);
+    delay(1000);
+    while (tank2_level <threshold_tank_level) {
+      time_taken=time_to_fill_up(threshold_flow_rate, tank2_level);
+      display_on_LCD(threshold_flow_rate, 0, tank2_level, time_taken, 0);
+      tank2_level+=threshold_flow_rate;
+    }
+  }
+  else if (current_tank==3) {
+    flow_into_tank(current_tank);
+    delay(1000);
+    while (tank3_level <threshold_tank_level) {
+      time_taken=time_to_fill_up(threshold_flow_rate, tank3_level);
+      display_on_LCD(threshold_flow_rate, 0, tank3_level, time_taken, 0);
+      tank3_level+=threshold_flow_rate;
+    }
+  }
+
+  else {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("tanks full");
+  }
+
+
   // while (true) 
   // {
   //         }    
